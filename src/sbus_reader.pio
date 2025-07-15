@@ -1,0 +1,66 @@
+; PIO program for SBUS receiver (100000 baud, 8E2, inverted)
+; The GPIO pin should be configured with inversion enabled in the C code.
+; The state machine runs at 8x the baud rate (800 kHz).
+
+.program sbus_reader_program
+
+.wrap_target
+    ; Wait for a start bit (a falling edge on the wire)
+    wait 0 pin 0
+    
+    ; Delay to the middle of the first data bit.
+    ; 1.5 bit times = 12 cycles at 8x oversample.
+    set x, 7 [11]
+
+bitloop:
+    ; Sample 8 data bits
+    in pins, 1
+    jmp x-- bitloop [6] ; 8 cycles per bit
+
+    ; Sample parity bit (we don't check it in PIO)
+    in pins, 1 [7]
+
+    ; Wait for 2 stop bits (high logic level)
+    wait 1 pin 0 [15]
+
+    ; Push the 9 bits (8 data + 1 parity) into the RX FIFO.
+    push noblock
+.wrap
+
+% c-sdk {
+#include "hardware/clocks.h"
+#include "hardware/gpio.h"
+
+static inline void sbus_reader_program_init(PIO pio, uint sm, uint offset, uint pin) {
+    const uint baud = 100000;
+
+    // SBUS is an inverted protocol. Enable hardware inversion on the GPIO.
+    gpio_set_inover(pin, GPIO_OVERRIDE_INVERT);
+
+    // Configure the GPIO pin for the PIO
+    pio_gpio_init(pio, pin);
+    
+    // Pull-up the pin, as the bus is idle high (physically)
+    gpio_set_pulls(pin, true, false);
+
+    pio_sm_config c = pio_get_default_sm_config();
+    sm_config_set_wrap(&c, offset, offset + sbus_reader_program_get_default_size() - 1);
+    
+    // Set the clock divider to run the state machine at 8x the baud rate
+    float div = (float)clock_get_hz(clk_sys) / (8 * baud);
+    sm_config_set_clkdiv(&c, div);
+    
+    // Set the 'in' source pins and 'jmp' pin
+    sm_config_set_in_pins(&c, pin);
+    sm_config_set_jmp_pin(&c, pin);
+    
+    // Configure the 'in' instruction to shift data from the right.
+    // Autopush is disabled; we push manually after receiving 9 bits.
+    sm_config_set_in_shift(&c, false, false, 9);
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_RX);
+    
+    // Load the configuration and start the state machine
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}
