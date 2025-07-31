@@ -11,6 +11,7 @@
 
 // Public functions
 void sbus_reader_init(PIO pio, uint sm, uint pin);
+void sbus_check_for_new_frame();
 bool sbus_get_latest_frame(uint16_t* channels, bool* failsafe, bool* frame_lost);
 
 #endif // SBUS_READER_H

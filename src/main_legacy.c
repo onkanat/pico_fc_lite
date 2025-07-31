@@ -2,6 +2,7 @@
 #include "pico/stdlib.h"
 #include "pico/time.h"
 #include "hardware/pio.h"
+#include "hardware/gpio.h"
 
 #include "sbus_reader.h"
 #include "pid_controller.h"

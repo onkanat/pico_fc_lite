@@ -29,14 +29,30 @@ project(pico_fc_lite C CXX ASM)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Suppress MAVLink packed member warnings
+add_compile_options(-Wno-address-of-packed-member)
+
 # Initialize the SDK
 pico_sdk_init()
 
-# Recursively find all source files
+# Find all source files, excluding legacy main.c and empty files
 file(GLOB_RECURSE SOURCES "src/*.cpp")
+file(GLOB C_SOURCES "src/*.c")
+
+# Remove main_legacy.c file from the sources (legacy full FC implementation)
+list(FILTER C_SOURCES EXCLUDE REGEX ".*main_legacy\\.c$")
+list(FILTER SOURCES EXCLUDE REGEX ".*control/mixer\\.cpp$")
+list(FILTER SOURCES EXCLUDE REGEX ".*control/pid\\.cpp$") 
+list(FILTER SOURCES EXCLUDE REGEX ".*filter/mahony\\.cpp$")
+list(FILTER SOURCES EXCLUDE REGEX ".*comms/esp_at\\.cpp$")
+list(FILTER SOURCES EXCLUDE REGEX ".*comms/mavlink_bridge\\.cpp$")
+list(APPEND SOURCES ${C_SOURCES})
 
 # Add executable and specify source files
 add_executable(${PROJECT_NAME} ${SOURCES})
+
+# Generate PIO headers
+pico_generate_pio_header(${PROJECT_NAME} ${CMAKE_CURRENT_LIST_DIR}/src/sbus_reader.pio)
 
 # Add MAVLink library to include path
 target_include_directories(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/c_library_v2/common)
@@ -47,6 +63,8 @@ target_link_libraries(${PROJECT_NAME}
     hardware_i2c
     hardware_uart
     hardware_spi
+    hardware_pio
+    hardware_gpio
 )
 
 # Enable usb output for debugging, disable uart output
@@ -55,4 +73,3 @@ pico_enable_stdio_uart(${PROJECT_NAME} 0)
 
 # Create map/bin/hex/uf2 file etc.
 pico_add_extra_outputs(${PROJECT_NAME})
-

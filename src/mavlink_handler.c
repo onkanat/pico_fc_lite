@@ -3,7 +3,7 @@
 
 // Include the MAVLink C library headers
 // Note: You must add the path to the mavlink library to your include paths.
-#include <mavlink/v2.0/common/mavlink.h>
+#include "mavlink.h"
 
 // --- Defines ---
 #define UART_ID uart0
@@ -84,8 +84,11 @@ void mavlink_send_rc_channels_override(uint16_t channels[16]) {
         0, // target system
         0, // target component
         channels[0], channels[1], channels[2], channels[3],
-        channels[4], channels[5], channels[6], channels[7]
-        // We only send the first 8 channels for simplicity
+        channels[4], channels[5], channels[6], channels[7],
+        channels[8], channels[9], channels[10], channels[11],
+        channels[12], channels[13], channels[14], channels[15],
+        0, // channels_override_flags_a
+        0  // channels_override_flags_b
     );
 
     // Copy the message to a send buffer

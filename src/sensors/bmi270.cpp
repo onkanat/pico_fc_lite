@@ -1,5 +1,6 @@
 #include "bmi270.h"
 #include "pico/stdlib.h"
+#include "hardware/gpio.h"
 #include <stdio.h>
 
 // BMI270 Register Map
